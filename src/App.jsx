@@ -1,8 +1,8 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "admin123";
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "cielosazules";
 
 function isVideo(item) {
   return (item.mimeType || "").startsWith("video/");
@@ -16,80 +16,123 @@ function formatBytes(bytes) {
 
 function formatDate(ts) {
   if (!ts) return "";
-  return new Date(ts).toLocaleString("es-CO");
+  return new Date(ts).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
 }
 
-function MediaCard({ item, admin, onOpen, onDownload, onDelete }) {
-  const url = item.url;
-  if (!url) return null;
+// Enrutado mínimo: "/" es la galería de los invitados, "/admin" el panel.
+function usePath() {
+  const [path, setPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  function navigate(to) {
+    if (to !== window.location.pathname) window.history.pushState({}, "", to);
+    setPath(to);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  return [path.replace(/\/+$/, "") || "/", navigate];
+}
+
+function Tile({ item, onOpen }) {
+  if (!item.url) return null;
   return (
-    <article
-      className={admin ? "admin-item" : "media-card"}
-      onClick={admin ? undefined : () => onOpen(item)}
-    >
-      <div className="media-thumb">
-        {isVideo(item) ? (
-          <>
-            <video src={url} muted preload="metadata" />
-            <span className="video-mark">▶</span>
-          </>
-        ) : (
-          <img src={url} alt="Recuerdo de boda" loading="lazy" />
-        )}
-      </div>
-      <div className={admin ? "admin-meta" : "media-info"}>
-        <small>
-          {formatDate(item._creationTime)}
-          {item.fileName ? ` · ${item.fileName}` : ""}
-        </small>
-      </div>
-      {admin && (
-        <div className="admin-controls" onClick={(e) => e.stopPropagation()}>
-          <button className="mini-btn" onClick={() => onDownload(item)}>⬇ Descargar</button>
-          <button className="mini-btn mini-danger" onClick={() => onDelete(item)}>Eliminar</button>
-        </div>
+    <button className="tile" onClick={onOpen} aria-label="Ver en grande">
+      {isVideo(item) ? (
+        <>
+          <video src={item.url} muted preload="metadata" />
+          <span className="play" aria-hidden="true" />
+        </>
+      ) : (
+        <img src={item.url} alt="" loading="lazy" />
       )}
-    </article>
+    </button>
   );
 }
 
-function EmptyState() {
+// Separador de hojas, el mismo de la web de la invitación.
+function Divider() {
   return (
-    <div className="empty-state">
-      <div>♡</div>
-      <h3>Aún no hay recuerdos</h3>
-      <p>¡Sé el primero en compartir una foto o video!</p>
+    <div className="divider" aria-hidden="true">
+      <span className="divider-line" />
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2c1.5 3 1.5 6 0 9-1.5-3-1.5-6 0-9Z" fill="currentColor" opacity="0.9" />
+        <path d="M12 22c1.5-3 1.5-6 0-9-1.5 3-1.5 6 0 9Z" fill="currentColor" opacity="0.9" />
+        <path d="M2 12c3-1.5 6-1.5 9 0-3 1.5-6 1.5-9 0Z" fill="currentColor" opacity="0.55" />
+        <path d="M22 12c-3-1.5-6-1.5-9 0 3 1.5 6 1.5 9 0Z" fill="currentColor" opacity="0.55" />
+        <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+      </svg>
+      <span className="divider-line" />
     </div>
   );
 }
 
-// Portada única: subir + fotos en vivo, sin navegar a otras vistas.
-function HomeView({ items, onOpen }) {
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [status, setStatus] = useState({ msg: "", type: "" });
+// Puntos del tallo (x, y, ángulo) donde nace cada par de hojas.
+const SPRIG_LEAVES = [
+  [37, 22, 30],
+  [68, 44, 38],
+  [97, 72, 45],
+  [125, 107, 55],
+];
+
+// Hoja apuntando hacia +x; se coloca con translate/rotate.
+const LEAF = "M0 0C6-6 16-6 22 0 16 6 6 6 0 0Z";
+
+// Ramita de olivo dibujada en código, para las esquinas superiores.
+function Sprig({ className }) {
+  return (
+    <svg className={`sprig ${className}`} viewBox="0 0 200 200" fill="none" aria-hidden="true">
+      <path d="M4 6C60 30 110 70 150 150" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {SPRIG_LEAVES.map(([x, y, a], i) => (
+        <g key={i} transform={`translate(${x} ${y})`} fill="currentColor">
+          <path d={LEAF} transform={`rotate(${a - 48}) scale(${1 - i * 0.04})`} opacity="0.85" />
+          <path d={LEAF} transform={`rotate(${a + 48}) scale(${0.92 - i * 0.04})`} opacity="0.6" />
+        </g>
+      ))}
+      <path d={LEAF} transform="translate(150 150) rotate(63) scale(0.8)" fill="currentColor" opacity="0.85" />
+      <g className="sprig-berries">
+        <circle cx="84" cy="66" r="3" />
+        <circle cx="112" cy="94" r="2.4" />
+        <circle cx="54" cy="40" r="2" />
+      </g>
+    </svg>
+  );
+}
+
+// Adornos de fondo: brillo cálido y ramitas. No reciben clics ni ocupan espacio.
+function Ornaments() {
+  return (
+    <div className="ornaments" aria-hidden="true">
+      <Sprig className="sprig-left" />
+      <Sprig className="sprig-right" />
+    </div>
+  );
+}
+
+function GuestView({ items, onOpen }) {
+  const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const fileInputRef = useRef(null);
+  const inputRef = useRef(null);
 
   const generateUploadUrl = useMutation(api.memories.generateUploadUrl);
   const saveMemory = useMutation(api.memories.save);
 
-  function handleFiles(files) {
-    const valid = files.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
-    setSelectedFiles(valid);
-    if (files.length && !valid.length) setStatus({ msg: "Selecciona imágenes o videos.", type: "error" });
-    else setStatus({ msg: "", type: "" });
-  }
-
-  async function handleUpload() {
-    if (!selectedFiles.length) {
-      setStatus({ msg: "Selecciona al menos una foto o video.", type: "error" });
+  // Sube en cuanto el invitado elige archivos: sin paso extra de "enviar".
+  async function upload(list) {
+    const files = list.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
+    if (!files.length) {
+      setStatus("Solo fotos o videos.");
       return;
     }
-    setStatus({ msg: `Subiendo ${selectedFiles.length} archivo(s)...`, type: "" });
     setUploading(true);
+    let done = 0;
     try {
-      for (const file of selectedFiles) {
+      for (const file of files) {
+        setStatus(`Subiendo ${done + 1} de ${files.length}…`);
         const uploadUrl = await generateUploadUrl();
         const res = await fetch(uploadUrl, {
           method: "POST",
@@ -105,88 +148,57 @@ function HomeView({ items, onOpen }) {
           mimeType: file.type,
           size: file.size,
         });
+        done += 1;
       }
-      setSelectedFiles([]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setStatus({ msg: "¡Tus recuerdos fueron guardados correctamente! ♥", type: "success" });
+      setStatus("¡Gracias! Ya está en la galería.");
     } catch (err) {
       console.error(err);
-      setStatus({ msg: "No se pudo subir. Revisa tu conexión o el tamaño (máx 100 MB).", type: "error" });
+      setStatus(`No se pudo subir (${done} de ${files.length}). Máximo 100 MB por archivo.`);
     } finally {
       setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
   return (
     <>
-      <div className="hero" style={{ padding: "45px 0 25px" }}>
-        <div className="hero-badge">Nuestro día especial · 2026</div>
-        <h1>Ayúdanos a guardar<br /><span>cada momento.</span></h1>
-        <p>Sube tus fotos aquí y mira las de los demás al instante.</p>
-      </div>
-
-      <div className="upload-card">
-        <label
-          className={`drop-zone${dragging ? " dragging" : ""}`}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            handleFiles([...e.dataTransfer.files]);
-          }}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            hidden
-            onChange={(e) => handleFiles([...e.target.files])}
-          />
-          <div className="upload-cloud">☁</div>
-          <h3>Arrastra tus archivos aquí</h3>
-          <p>o <strong>haz clic para seleccionarlos</strong></p>
-          <small>JPG, PNG, WEBP, MP4, MOV y otros formatos compatibles</small>
-        </label>
-
-        {!!selectedFiles.length && (
-          <div className="selected-files">
-            {selectedFiles.map((f) => (
-              <div key={f.name + f.size} className="file-chip">✓ {f.name} · {formatBytes(f.size)}</div>
-            ))}
-          </div>
-        )}
-
-        <button className="primary-btn full" onClick={handleUpload} disabled={uploading}>
-          Subir recuerdos ♥
-        </button>
-        <div className={`status ${status.type}`}>{status.msg}</div>
-      </div>
-
-      <div className="live-feed">
-        <div className="live-feed-head">
-          <div>
-            <span className="eyebrow">EN VIVO</span>
-            <h3>Fotos de los invitados {items.length > 0 && <span className="live-count">({items.length})</span>}</h3>
-            <p>Aparecen aquí automáticamente cuando alguien sube.</p>
-          </div>
+      <Ornaments />
+      <section className="top">
+        <h1>Kevin &amp; Cesia</h1>
+        <Divider />
+        <div className="upload">
+          <label className={`upload-btn${uploading ? " is-busy" : ""}`}>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              disabled={uploading}
+              className="visually-hidden"
+              onChange={(e) => upload([...e.target.files])}
+            />
+            {uploading ? "Subiendo…" : "Subir fotos"}
+          </label>
+          {status && <p className="status" role="status">{status}</p>}
         </div>
+      </section>
+
+      <section className="gallery" aria-label="Galería">
         {items.length === 0 ? (
-          <EmptyState />
+          <p className="empty">Aún no hay fotos. ¡Sube la primera!</p>
         ) : (
-          <div className="gallery-grid">
-            {items.map((item) => (
-              <MediaCard key={item._id} item={item} onOpen={onOpen} />
+          <div className="grid">
+            {items.map((item, i) => (
+              <Tile key={item._id} item={item} onOpen={() => onOpen(i)} />
             ))}
           </div>
         )}
-      </div>
+      </section>
     </>
   );
 }
 
-function AdminView({ items }) {
+function AdminView({ items, onExit }) {
   const [logged, setLogged] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -199,8 +211,8 @@ function AdminView({ items }) {
     return items.filter((x) => String(x.fileName || "").toLowerCase().includes(q));
   }, [items, search]);
 
-  const photos = items.filter((x) => !isVideo(x)).length;
   const videos = items.filter(isVideo).length;
+  const photos = items.length - videos;
 
   function login() {
     if (password === ADMIN_PASSWORD) {
@@ -223,158 +235,218 @@ function AdminView({ items }) {
   }
 
   async function deleteItem(item) {
-    if (!window.confirm("¿Eliminar este recuerdo?")) return;
+    if (!window.confirm(`¿Eliminar "${item.fileName || "este archivo"}"?`)) return;
     await removeMemory({ id: item._id });
   }
 
   async function handleClearAll() {
     if (!items.length) return;
-    if (window.confirm("¿Seguro que deseas eliminar TODOS los recuerdos? Esta acción no se puede deshacer.")) {
+    if (window.confirm(`¿Eliminar los ${items.length} archivos? No se puede deshacer.`)) {
       await clearAll({});
     }
   }
 
   if (!logged) {
     return (
-      <div className="admin-login">
-        <div className="login-card">
-          <div className="lock">🔐</div>
-          <span className="eyebrow">ÁREA PRIVADA</span>
-          <h2>Panel de administración</h2>
-          <p>Ingresa para gestionar los recuerdos de la boda.</p>
+      <section className="login">
+        <h1>Administración</h1>
+        <form onSubmit={(e) => { e.preventDefault(); login(); }}>
           <input
             type="password"
+            aria-label="Contraseña"
             placeholder="Contraseña"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") login(); }}
           />
-          <button className="primary-btn full" onClick={login}>Entrar al panel</button>
-          {error && <div className="error-msg">{error}</div>}
-          <small className="demo-note">Demo: contraseña <b>admin123</b></small>
-        </div>
-      </div>
+          <button className="upload-btn" type="submit">Entrar</button>
+          {error && <p className="status error" role="alert">{error}</p>}
+        </form>
+      </section>
     );
   }
 
   return (
-    <>
-      <div className="admin-top">
+    <section className="admin">
+      <div className="admin-head">
         <div>
-          <span className="eyebrow">ADMINISTRACIÓN</span>
-          <h2>Recuerdos recibidos</h2>
+          <h1>Archivos recibidos</h1>
+          <p className="summary">{items.length} en total · {photos} fotos · {videos} videos</p>
         </div>
         <div className="admin-actions">
           <button
-            className="primary-btn"
+            className="text-btn"
             onClick={() => {
               if (!items.length) { window.alert("No hay archivos para descargar."); return; }
               items.forEach((x, i) => setTimeout(() => downloadItem(x), i * 250));
             }}
           >
-            ⬇ Descargar seleccionados
+            Descargar todo
           </button>
-          <button className="danger-btn" onClick={handleClearAll}>Eliminar todo</button>
+          <button className="text-btn danger" onClick={handleClearAll}>Eliminar todo</button>
         </div>
       </div>
 
-      <div className="stats">
-        <div className="stat-card"><strong>{items.length}</strong><span>Archivos</span></div>
-        <div className="stat-card"><strong>{photos}</strong><span>Fotos</span></div>
-        <div className="stat-card"><strong>{videos}</strong><span>Videos</span></div>
-      </div>
-
-      <div className="admin-toolbar">
+      <div className="admin-tools">
         <input
           type="search"
-          placeholder="Buscar por nombre de archivo..."
+          aria-label="Buscar por nombre"
+          placeholder="Buscar por nombre"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button
-          className="ghost-btn"
-          onClick={() => { setLogged(false); setPassword(""); }}
-        >
-          Cerrar sesión
-        </button>
+        <button className="text-btn" onClick={onExit}>Volver a la galería</button>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="empty-state">
-          <div>📂</div><h3>No hay archivos</h3><p>Los recuerdos que suban los invitados aparecerán aquí.</p>
-        </div>
+        <p className="empty">{items.length ? "Ningún archivo coincide." : "Aún no llegan archivos."}</p>
       ) : (
-        <div className="admin-grid">
-          {filtered.map((item) => (
-            <MediaCard
-              key={item._id}
-              item={item}
-              admin
-              onDownload={downloadItem}
-              onDelete={deleteItem}
-            />
-          ))}
-        </div>
+        <table className="files">
+          <thead>
+            <tr>
+              <th scope="col"><span className="visually-hidden">Vista previa</span></th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Subido</th>
+              <th scope="col">Tamaño</th>
+              <th scope="col"><span className="visually-hidden">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((item) => (
+              <tr key={item._id}>
+                <td className="thumb-cell">
+                  {item.url && (isVideo(item)
+                    ? <video src={item.url} muted preload="metadata" />
+                    : <img src={item.url} alt="" loading="lazy" />)}
+                </td>
+                <td className="name-cell">{item.fileName || "Sin nombre"}</td>
+                <td>{formatDate(item._creationTime)}</td>
+                <td>{formatBytes(item.size)}</td>
+                <td className="row-actions">
+                  <button className="text-btn" onClick={() => downloadItem(item)}>Descargar</button>
+                  <button className="text-btn danger" onClick={() => deleteItem(item)}>Eliminar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
-    </>
+    </section>
   );
 }
 
 export default function App() {
-  const [view, setView] = useState("home");
-  const [lightbox, setLightbox] = useState(null);
-  const items = useQuery(api.memories.list) ?? [];
+  const [path, navigate] = usePath();
+  // Índice del recuerdo abierto en el visor; null = cerrado.
+  const [viewing, setViewing] = useState(null);
+  const loaded = useQuery(api.memories.list);
+  const items = loaded ?? [];
+  const isAdmin = path === "/admin";
+  const isEmpty = !isAdmin && loaded?.length === 0;
 
-  function go(next) {
-    setView(next);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const count = items.length;
+  const open = viewing !== null;
+  const current = open ? items[viewing] : null;
+
+  // Avanza o retrocede sin salir del primero ni del último.
+  function step(d) {
+    setViewing((v) => (v === null ? v : Math.min(Math.max(v + d, 0), count - 1)));
+  }
+
+  // Si se elimina el último recuerdo abierto, el visor se queda en el nuevo último.
+  useEffect(() => {
+    if (open && viewing >= count) setViewing(count ? count - 1 : null);
+  }, [open, viewing, count]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setViewing(null);
+      if (e.key === "ArrowRight") step(1);
+      if (e.key === "ArrowLeft") step(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [open, count]);
+
+  // Deslizar (dedo o mouse): izquierda/derecha cambia de recuerdo, hacia abajo cierra.
+  // Los videos se ignoran para que su barra de progreso no cambie de recuerdo.
+  const swipe = useRef(null);
+  const swiped = useRef(false);
+
+  function onPointerDown(e) {
+    swiped.current = false;
+    if (e.target.tagName === "VIDEO") return;
+    swipe.current = { x: e.clientX, y: e.clientY };
+  }
+
+  function onPointerUp(e) {
+    const start = swipe.current;
+    swipe.current = null;
+    if (!start) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      swiped.current = true;
+      step(dx < 0 ? 1 : -1);
+    } else if (dy > 120 && Math.abs(dy) > Math.abs(dx)) {
+      swiped.current = true;
+      setViewing(null);
+    }
+  }
+
+  // Toque en el tercio izquierdo o derecho, como en Stories. Un deslizar no cuenta como toque.
+  function onLightboxClick(e) {
+    if (swiped.current || e.target.tagName === "VIDEO") return;
+    const ratio = e.clientX / window.innerWidth;
+    if (ratio < 0.3) step(-1);
+    else if (ratio > 0.7) step(1);
   }
 
   return (
     <>
-      <div className="bg-orb orb-1"></div>
-      <div className="bg-orb orb-2"></div>
-
-      <header className="navbar">
-        <a href="#" className="brand" onClick={(e) => { e.preventDefault(); go("home"); }}>
-          <span className="brand-icon">♥</span>
-          <span>Wedding Memories</span>
-        </a>
-        <nav>
-          <button className={`nav-link${view === "home" ? " active" : ""}`} onClick={() => go("home")}>Inicio</button>
-          <button className="admin-btn" onClick={() => go("admin")}>Admin</button>
-        </nav>
-      </header>
-
-      <main>
-        {view === "home" && (
-          <section className="view active-view">
-            <HomeView items={items} onOpen={setLightbox} />
-          </section>
-        )}
-
-        {view === "admin" && (
-          <section className="view active-view">
-            <AdminView items={items} />
-          </section>
-        )}
+      <main className={isEmpty ? "is-empty" : undefined}>
+        {isAdmin
+          ? <AdminView items={items} onExit={() => navigate("/")} />
+          : <GuestView items={items} onOpen={setViewing} />}
       </main>
 
-      {lightbox?.url && (
-        <div className="lightbox" onClick={(e) => { if (e.target.classList.contains("lightbox")) setLightbox(null); }}>
-          <button className="lightbox-close" onClick={() => setLightbox(null)}>×</button>
-          <div>
-            {isVideo(lightbox)
-              ? <video src={lightbox.url} controls autoPlay />
-              : <img src={lightbox.url} alt="" />}
+      {current?.url && (
+        <div
+          className="lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vista ampliada"
+          onClick={onLightboxClick}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
+        >
+          <div className="progress" aria-hidden="true">
+            {count <= 30
+              ? items.map((_, i) => (
+                  <span key={i} className={i < viewing ? "seen" : i === viewing ? "now" : undefined} />
+                ))
+              : (
+                  <span className="track">
+                    <span className="fill" style={{ width: `${((viewing + 1) / count) * 100}%` }} />
+                  </span>
+                )}
           </div>
+          <button
+            className="lightbox-close"
+            onClick={(e) => { e.stopPropagation(); setViewing(null); }}
+          >
+            Cerrar
+          </button>
+          {isVideo(current)
+            ? <video key={current._id} src={current.url} controls autoPlay playsInline />
+            : <img key={current._id} src={current.url} alt="" draggable={false} />}
         </div>
       )}
-
-      <footer>
-        <span>Hecho con ♥ para un día inolvidable</span>
-        <button onClick={() => go("admin")} className="footer-admin">Acceso administrador</button>
-      </footer>
     </>
   );
 }
