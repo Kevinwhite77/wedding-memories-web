@@ -71,6 +71,48 @@ function Divider() {
   );
 }
 
+// Puntos del tallo (x, y, ángulo) donde nace cada par de hojas.
+const SPRIG_LEAVES = [
+  [37, 22, 30],
+  [68, 44, 38],
+  [97, 72, 45],
+  [125, 107, 55],
+];
+
+// Hoja apuntando hacia +x; se coloca con translate/rotate.
+const LEAF = "M0 0C6-6 16-6 22 0 16 6 6 6 0 0Z";
+
+// Ramita de olivo dibujada en código, para las esquinas superiores.
+function Sprig({ className }) {
+  return (
+    <svg className={`sprig ${className}`} viewBox="0 0 200 200" fill="none" aria-hidden="true">
+      <path d="M4 6C60 30 110 70 150 150" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {SPRIG_LEAVES.map(([x, y, a], i) => (
+        <g key={i} transform={`translate(${x} ${y})`} fill="currentColor">
+          <path d={LEAF} transform={`rotate(${a - 48}) scale(${1 - i * 0.04})`} opacity="0.85" />
+          <path d={LEAF} transform={`rotate(${a + 48}) scale(${0.92 - i * 0.04})`} opacity="0.6" />
+        </g>
+      ))}
+      <path d={LEAF} transform="translate(150 150) rotate(63) scale(0.8)" fill="currentColor" opacity="0.85" />
+      <g className="sprig-berries">
+        <circle cx="84" cy="66" r="3" />
+        <circle cx="112" cy="94" r="2.4" />
+        <circle cx="54" cy="40" r="2" />
+      </g>
+    </svg>
+  );
+}
+
+// Adornos de fondo: brillo cálido y ramitas. No reciben clics ni ocupan espacio.
+function Ornaments() {
+  return (
+    <div className="ornaments" aria-hidden="true">
+      <Sprig className="sprig-left" />
+      <Sprig className="sprig-right" />
+    </div>
+  );
+}
+
 function GuestView({ items, onOpen }) {
   const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -120,8 +162,7 @@ function GuestView({ items, onOpen }) {
 
   return (
     <>
-      <img src="/botanical-sprig.png" alt="" aria-hidden="true" className="sprig sprig-top" />
-      <img src="/botanical-sprig.png" alt="" aria-hidden="true" className="sprig sprig-bottom" />
+      <Ornaments />
       <section className="top">
         <h1>Kevin &amp; Cesia</h1>
         <Divider />
@@ -144,10 +185,7 @@ function GuestView({ items, onOpen }) {
 
       <section className="gallery" aria-label="Galería">
         {items.length === 0 ? (
-          <div className="empty-wrap">
-            <img src="/botanical-sprig.png" alt="" aria-hidden="true" className="empty-sprig" />
-            <p className="empty">Aún no hay fotos. ¡Sube la primera!</p>
-          </div>
+          <p className="empty">Aún no hay fotos. ¡Sube la primera!</p>
         ) : (
           <div className="grid">
             {items.map((item, i) => (
