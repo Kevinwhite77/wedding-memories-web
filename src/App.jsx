@@ -19,7 +19,7 @@ function formatDate(ts) {
   return new Date(ts).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
 }
 
-// Enrutado mínimo: "/" es la noche de los invitados, "/admin" el panel.
+// Enrutado mínimo: "/" es la galería de los invitados, "/admin" el panel.
 function usePath() {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -41,46 +41,39 @@ function usePath() {
 function Tile({ item, onOpen }) {
   if (!item.url) return null;
   return (
-    <button className="tile" onClick={() => onOpen(item)} aria-label={`Ver ${item.fileName || "recuerdo"}`}>
+    <button className="tile" onClick={() => onOpen(item)} aria-label="Ver en grande">
       {isVideo(item) ? (
-        <video src={item.url} muted preload="metadata" />
+        <>
+          <video src={item.url} muted preload="metadata" />
+          <span className="play" aria-hidden="true" />
+        </>
       ) : (
         <img src={item.url} alt="" loading="lazy" />
       )}
-      {isVideo(item) && <span className="play" aria-hidden="true" />}
     </button>
   );
 }
 
 function GuestView({ items, onOpen }) {
-  const [files, setFiles] = useState([]);
-  const [status, setStatus] = useState({ msg: "", type: "" });
+  const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
 
   const generateUploadUrl = useMutation(api.memories.generateUploadUrl);
   const saveMemory = useMutation(api.memories.save);
 
-  function pick(list) {
-    const valid = list.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
-    setFiles(valid);
-    setStatus(
-      list.length && !valid.length
-        ? { msg: "Solo aceptamos fotos y videos.", type: "error" }
-        : { msg: "", type: "" }
-    );
-  }
-
-  async function send() {
+  // Sube en cuanto el invitado elige archivos: sin paso extra de "enviar".
+  async function upload(list) {
+    const files = list.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
     if (!files.length) {
-      setStatus({ msg: "Elige al menos una foto o video.", type: "error" });
+      setStatus("Solo fotos o videos.");
       return;
     }
     setUploading(true);
-    setStatus({ msg: `Enviando ${files.length} ${files.length === 1 ? "archivo" : "archivos"}…`, type: "" });
+    let done = 0;
     try {
       for (const file of files) {
+        setStatus(`Subiendo ${done + 1} de ${files.length}…`);
         const uploadUrl = await generateUploadUrl();
         const res = await fetch(uploadUrl, {
           method: "POST",
@@ -96,82 +89,44 @@ function GuestView({ items, onOpen }) {
           mimeType: file.type,
           size: file.size,
         });
+        done += 1;
       }
-      setFiles([]);
-      if (inputRef.current) inputRef.current.value = "";
-      setStatus({ msg: "Listo. Ya aparecen en la galería.", type: "success" });
+      setStatus("¡Gracias! Ya está en la galería.");
     } catch (err) {
       console.error(err);
-      setStatus({ msg: "No se pudo enviar. Revisa tu conexión e intenta otra vez. Máximo 100 MB por archivo.", type: "error" });
+      setStatus(`No se pudo subir (${done} de ${files.length}). Máximo 100 MB por archivo.`);
     } finally {
       setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
     }
   }
 
   return (
     <>
-      <section className="hero">
-        <h1>
-          <span>Las fotos</span>
-          <span>que nos faltaban.</span>
-        </h1>
-        <div className="hero-foot">
-          <p>Sube lo que captaste esta noche. Cada archivo aparece en la galería al instante.</p>
-          <label
-            className={`shutter${dragging ? " is-dragging" : ""}`}
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              pick([...e.dataTransfer.files]);
-            }}
-          >
+      <section className="top">
+        <h1>Kevin &amp; Cesia</h1>
+        <div className="upload">
+          <label className={`upload-btn${uploading ? " is-busy" : ""}`}>
             <input
               ref={inputRef}
               type="file"
               accept="image/*,video/*"
               multiple
+              disabled={uploading}
               className="visually-hidden"
-              onChange={(e) => pick([...e.target.files])}
+              onChange={(e) => upload([...e.target.files])}
             />
-            <span className="shutter-core">
-              {files.length ? files.length : "Elegir"}
-            </span>
-            <span className="visually-hidden">Elegir fotos y videos</span>
+            {uploading ? "Subiendo…" : "Subir fotos"}
           </label>
+          {status && <p className="status" role="status">{status}</p>}
         </div>
       </section>
 
-      <section className="upload" aria-label="Enviar recuerdos">
-        {!!files.length && (
-          <ul className="queue">
-            {files.map((f) => (
-              <li key={f.name + f.size}>
-                <span className="queue-name">{f.name}</span>
-                <span className="queue-size">{formatBytes(f.size)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="send-row">
-          <button className="send" onClick={send} disabled={uploading || !files.length}>
-            {uploading ? "Enviando…" : "Enviar recuerdos"}
-          </button>
-          <p className={`status ${status.type}`} role="status">{status.msg}</p>
-        </div>
-      </section>
-
-      <section className="gallery" aria-labelledby="gallery-title">
-        <div className="gallery-head">
-          <h2 id="gallery-title">Lo que han compartido</h2>
-          {items.length > 0 && <span className="count">{items.length} {items.length === 1 ? "archivo" : "archivos"}</span>}
-        </div>
+      <section className="gallery" aria-label="Galería">
         {items.length === 0 ? (
-          <p className="empty">Todavía no hay nada aquí. La primera foto puede ser tuya.</p>
+          <p className="empty">Aún no hay fotos. ¡Sube la primera!</p>
         ) : (
-          <div className="mosaic">
+          <div className="grid">
             {items.map((item) => (
               <Tile key={item._id} item={item} onOpen={onOpen} />
             ))}
@@ -182,7 +137,7 @@ function GuestView({ items, onOpen }) {
   );
 }
 
-function AdminView({ items }) {
+function AdminView({ items, onExit }) {
   const [logged, setLogged] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -203,7 +158,7 @@ function AdminView({ items }) {
       setLogged(true);
       setError("");
     } else {
-      setError("La contraseña no coincide.");
+      setError("Contraseña incorrecta.");
     }
   }
 
@@ -225,7 +180,7 @@ function AdminView({ items }) {
 
   async function handleClearAll() {
     if (!items.length) return;
-    if (window.confirm("¿Eliminar los " + items.length + " archivos? Esta acción no se puede deshacer.")) {
+    if (window.confirm(`¿Eliminar los ${items.length} archivos? No se puede deshacer.`)) {
       await clearAll({});
     }
   }
@@ -234,18 +189,16 @@ function AdminView({ items }) {
     return (
       <section className="login">
         <h1>Administración</h1>
-        <p>Ingresa la contraseña para revisar y descargar los archivos.</p>
         <form onSubmit={(e) => { e.preventDefault(); login(); }}>
-          <label className="field">
-            <span>Contraseña</span>
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-          <button className="send" type="submit">Entrar</button>
+          <input
+            type="password"
+            aria-label="Contraseña"
+            placeholder="Contraseña"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <button className="upload-btn" type="submit">Entrar</button>
           {error && <p className="status error" role="alert">{error}</p>}
         </form>
       </section>
@@ -257,9 +210,7 @@ function AdminView({ items }) {
       <div className="admin-head">
         <div>
           <h1>Archivos recibidos</h1>
-          <p className="summary">
-            {items.length} en total · {photos} {photos === 1 ? "foto" : "fotos"} · {videos} {videos === 1 ? "video" : "videos"}
-          </p>
+          <p className="summary">{items.length} en total · {photos} fotos · {videos} videos</p>
         </div>
         <div className="admin-actions">
           <button
@@ -279,15 +230,15 @@ function AdminView({ items }) {
         <input
           type="search"
           aria-label="Buscar por nombre"
-          placeholder="Buscar por nombre de archivo"
+          placeholder="Buscar por nombre"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button className="text-btn" onClick={() => { setLogged(false); setPassword(""); }}>Salir</button>
+        <button className="text-btn" onClick={onExit}>Volver a la galería</button>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="empty">{items.length ? "Ningún archivo coincide con la búsqueda." : "Aún no llegan archivos."}</p>
+        <p className="empty">{items.length ? "Ningún archivo coincide." : "Aún no llegan archivos."}</p>
       ) : (
         <table className="files">
           <thead>
@@ -338,22 +289,17 @@ export default function App() {
 
   return (
     <>
-      <header className="top">
-        <a href="/" className="wordmark" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
-          Recuerdos de la boda
-        </a>
-        <nav>
-          {isAdmin ? (
-            <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }}>Ver la galería</a>
-          ) : (
-            <a href="/admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}>Administración</a>
-          )}
-        </nav>
-      </header>
-
       <main>
-        {isAdmin ? <AdminView items={items} /> : <GuestView items={items} onOpen={setLightbox} />}
+        {isAdmin
+          ? <AdminView items={items} onExit={() => navigate("/")} />
+          : <GuestView items={items} onOpen={setLightbox} />}
       </main>
+
+      {!isAdmin && (
+        <footer>
+          <a href="/admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}>Administración</a>
+        </footer>
+      )}
 
       {lightbox?.url && (
         <div
@@ -362,7 +308,7 @@ export default function App() {
           aria-modal="true"
           onClick={(e) => { if (e.target === e.currentTarget) setLightbox(null); }}
         >
-          <button className="lightbox-close" aria-label="Cerrar" onClick={() => setLightbox(null)}>Cerrar</button>
+          <button className="lightbox-close" onClick={() => setLightbox(null)}>Cerrar</button>
           {isVideo(lightbox)
             ? <video src={lightbox.url} controls autoPlay />
             : <img src={lightbox.url} alt="" />}
