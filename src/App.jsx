@@ -16,10 +16,10 @@ function formatBytes(bytes) {
 
 function formatDate(ts) {
   if (!ts) return "";
-  return new Date(ts).toLocaleString("es-CO");
+  return new Date(ts).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
 }
 
-// Enrutado mínimo por ruta: "/" es la galería y "/admin" el panel.
+// Enrutado mínimo: "/" es la noche de los invitados, "/admin" el panel.
 function usePath() {
   const [path, setPath] = useState(window.location.pathname);
 
@@ -38,73 +38,49 @@ function usePath() {
   return [path.replace(/\/+$/, "") || "/", navigate];
 }
 
-function MediaCard({ item, admin, onOpen, onDownload, onDelete }) {
-  const url = item.url;
-  if (!url) return null;
+function Tile({ item, onOpen }) {
+  if (!item.url) return null;
   return (
-    <article
-      className={admin ? "admin-item" : "media-card"}
-      onClick={admin ? undefined : () => onOpen(item)}
-    >
-      <div className="media-thumb">
-        {isVideo(item) ? (
-          <>
-            <video src={url} muted preload="metadata" />
-            <span className="video-mark">▶</span>
-          </>
-        ) : (
-          <img src={url} alt="Recuerdo de boda" loading="lazy" />
-        )}
-      </div>
-      <div className="media-meta">
-        <span>{formatDate(item._creationTime)}</span>
-        {item.fileName && <span className="media-name">{item.fileName}</span>}
-      </div>
-      {admin && (
-        <div className="admin-controls" onClick={(e) => e.stopPropagation()}>
-          <button className="mini-btn" onClick={() => onDownload(item)}>Descargar</button>
-          <button className="mini-btn mini-danger" onClick={() => onDelete(item)}>Eliminar</button>
-        </div>
+    <button className="tile" onClick={() => onOpen(item)} aria-label={`Ver ${item.fileName || "recuerdo"}`}>
+      {isVideo(item) ? (
+        <video src={item.url} muted preload="metadata" />
+      ) : (
+        <img src={item.url} alt="" loading="lazy" />
       )}
-    </article>
+      {isVideo(item) && <span className="play" aria-hidden="true" />}
+    </button>
   );
 }
 
-function EmptyState() {
-  return (
-    <div className="empty-state">
-      <h3>Aún no hay recuerdos</h3>
-      <p>Sé el primero en compartir una foto o un video.</p>
-    </div>
-  );
-}
-
-function HomeView({ items, onOpen }) {
-  const [selectedFiles, setSelectedFiles] = useState([]);
+function GuestView({ items, onOpen }) {
+  const [files, setFiles] = useState([]);
   const [status, setStatus] = useState({ msg: "", type: "" });
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const fileInputRef = useRef(null);
+  const inputRef = useRef(null);
 
   const generateUploadUrl = useMutation(api.memories.generateUploadUrl);
   const saveMemory = useMutation(api.memories.save);
 
-  function handleFiles(files) {
-    const valid = files.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
-    setSelectedFiles(valid);
-    if (files.length && !valid.length) setStatus({ msg: "Selecciona imágenes o videos.", type: "error" });
-    else setStatus({ msg: "", type: "" });
+  function pick(list) {
+    const valid = list.filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
+    setFiles(valid);
+    setStatus(
+      list.length && !valid.length
+        ? { msg: "Solo aceptamos fotos y videos.", type: "error" }
+        : { msg: "", type: "" }
+    );
   }
 
-  async function handleUpload() {
-    if (!selectedFiles.length) {
-      setStatus({ msg: "Selecciona al menos una foto o video.", type: "error" });
+  async function send() {
+    if (!files.length) {
+      setStatus({ msg: "Elige al menos una foto o video.", type: "error" });
       return;
     }
-    setStatus({ msg: `Subiendo ${selectedFiles.length} archivo(s)…`, type: "" });
     setUploading(true);
+    setStatus({ msg: `Enviando ${files.length} ${files.length === 1 ? "archivo" : "archivos"}…`, type: "" });
     try {
-      for (const file of selectedFiles) {
+      for (const file of files) {
         const uploadUrl = await generateUploadUrl();
         const res = await fetch(uploadUrl, {
           method: "POST",
@@ -121,12 +97,12 @@ function HomeView({ items, onOpen }) {
           size: file.size,
         });
       }
-      setSelectedFiles([]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setStatus({ msg: "¡Gracias! Tus recuerdos se guardaron correctamente.", type: "success" });
+      setFiles([]);
+      if (inputRef.current) inputRef.current.value = "";
+      setStatus({ msg: "Listo. Ya aparecen en la galería.", type: "success" });
     } catch (err) {
       console.error(err);
-      setStatus({ msg: "No se pudo subir. Revisa tu conexión o el tamaño (máx 100 MB).", type: "error" });
+      setStatus({ msg: "No se pudo enviar. Revisa tu conexión e intenta otra vez. Máximo 100 MB por archivo.", type: "error" });
     } finally {
       setUploading(false);
     }
@@ -135,65 +111,64 @@ function HomeView({ items, onOpen }) {
   return (
     <>
       <section className="hero">
-        <span className="eyebrow">Nuestro día · 2026</span>
-        <h1>Guarda cada momento</h1>
-        <p>Comparte tus fotos y videos, y revive los de todos los invitados.</p>
+        <h1>Las fotos que nos faltaban.</h1>
+        <p>Sube lo que captaste esta noche. Cada archivo aparece en la galería al instante.</p>
       </section>
 
-      <section className="upload">
+      <section className="upload" aria-labelledby="upload-title">
+        <h2 id="upload-title" className="visually-hidden">Subir recuerdos</h2>
         <label
-          className={`drop-zone${dragging ? " dragging" : ""}`}
+          className={`drop${dragging ? " is-dragging" : ""}`}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            handleFiles([...e.dataTransfer.files]);
+            pick([...e.dataTransfer.files]);
           }}
         >
           <input
-            ref={fileInputRef}
+            ref={inputRef}
             type="file"
             accept="image/*,video/*"
             multiple
-            hidden
-            onChange={(e) => handleFiles([...e.target.files])}
+            className="visually-hidden"
+            onChange={(e) => pick([...e.target.files])}
           />
-          <span className="drop-title">Arrastra tus archivos aquí</span>
-          <span className="drop-sub">o haz clic para elegirlos · JPG, PNG, HEIC, MP4, MOV</span>
+          <span className="drop-title">{files.length ? `${files.length} listo${files.length === 1 ? "" : "s"} para enviar` : "Elige fotos y videos"}</span>
+          <span className="drop-hint">o arrástralos a este recuadro</span>
         </label>
 
-        {!!selectedFiles.length && (
-          <ul className="selected-files">
-            {selectedFiles.map((f) => (
+        {!!files.length && (
+          <ul className="queue">
+            {files.map((f) => (
               <li key={f.name + f.size}>
-                <span>{f.name}</span>
-                <span className="muted">{formatBytes(f.size)}</span>
+                <span className="queue-name">{f.name}</span>
+                <span className="queue-size">{formatBytes(f.size)}</span>
               </li>
             ))}
           </ul>
         )}
 
-        <button className="primary-btn" onClick={handleUpload} disabled={uploading}>
-          {uploading ? "Subiendo…" : "Subir recuerdos"}
-        </button>
-        <div className={`status ${status.type}`}>{status.msg}</div>
+        <div className="send-row">
+          <button className="send" onClick={send} disabled={uploading || !files.length}>
+            {uploading ? "Enviando…" : "Enviar recuerdos"}
+          </button>
+          <p className={`status ${status.type}`} role="status">{status.msg}</p>
+        </div>
       </section>
 
-      <section className="gallery">
-        <header className="gallery-head">
-          <span className="eyebrow">En vivo</span>
-          <h2>
-            Fotos de los invitados
-            {items.length > 0 && <span className="count"> ({items.length})</span>}
-          </h2>
-        </header>
+      <section className="gallery" aria-labelledby="gallery-title">
+        <div className="gallery-head">
+          <h2 id="gallery-title">Lo que han compartido</h2>
+          {items.length > 0 && <span className="count">{items.length} {items.length === 1 ? "archivo" : "archivos"}</span>}
+        </div>
         {items.length === 0 ? (
-          <EmptyState />
+          <p className="empty">Todavía no hay nada aquí. La primera foto puede ser tuya.</p>
         ) : (
-          <div className="gallery-grid">
+          <div className="mosaic">
             {items.map((item) => (
-              <MediaCard key={item._id} item={item} onOpen={onOpen} />
+              <Tile key={item._id} item={item} onOpen={onOpen} />
             ))}
           </div>
         )}
@@ -215,15 +190,15 @@ function AdminView({ items }) {
     return items.filter((x) => String(x.fileName || "").toLowerCase().includes(q));
   }, [items, search]);
 
-  const photos = items.filter((x) => !isVideo(x)).length;
   const videos = items.filter(isVideo).length;
+  const photos = items.length - videos;
 
   function login() {
     if (password === ADMIN_PASSWORD) {
       setLogged(true);
       setError("");
     } else {
-      setError("Contraseña incorrecta.");
+      setError("La contraseña no coincide.");
     }
   }
 
@@ -239,13 +214,13 @@ function AdminView({ items }) {
   }
 
   async function deleteItem(item) {
-    if (!window.confirm("¿Eliminar este recuerdo?")) return;
+    if (!window.confirm(`¿Eliminar "${item.fileName || "este archivo"}"?`)) return;
     await removeMemory({ id: item._id });
   }
 
   async function handleClearAll() {
     if (!items.length) return;
-    if (window.confirm("¿Seguro que deseas eliminar TODOS los recuerdos? Esta acción no se puede deshacer.")) {
+    if (window.confirm("¿Eliminar los " + items.length + " archivos? Esta acción no se puede deshacer.")) {
       await clearAll({});
     }
   }
@@ -253,33 +228,37 @@ function AdminView({ items }) {
   if (!logged) {
     return (
       <section className="login">
-        <div className="login-card">
-          <span className="eyebrow">Área privada</span>
-          <h2>Panel de administración</h2>
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") login(); }}
-          />
-          <button className="primary-btn full" onClick={login}>Entrar</button>
-          {error && <div className="error-msg">{error}</div>}
-        </div>
+        <h1>Administración</h1>
+        <p>Ingresa la contraseña para revisar y descargar los archivos.</p>
+        <form onSubmit={(e) => { e.preventDefault(); login(); }}>
+          <label className="field">
+            <span>Contraseña</span>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          <button className="send" type="submit">Entrar</button>
+          {error && <p className="status error" role="alert">{error}</p>}
+        </form>
       </section>
     );
   }
 
   return (
     <section className="admin">
-      <header className="admin-top">
+      <div className="admin-head">
         <div>
-          <span className="eyebrow">Administración</span>
-          <h2>Recuerdos recibidos</h2>
+          <h1>Archivos recibidos</h1>
+          <p className="summary">
+            {items.length} en total · {photos} {photos === 1 ? "foto" : "fotos"} · {videos} {videos === 1 ? "video" : "videos"}
+          </p>
         </div>
         <div className="admin-actions">
           <button
-            className="ghost-btn"
+            className="text-btn"
             onClick={() => {
               if (!items.length) { window.alert("No hay archivos para descargar."); return; }
               items.forEach((x, i) => setTimeout(() => downloadItem(x), i * 250));
@@ -287,45 +266,53 @@ function AdminView({ items }) {
           >
             Descargar todo
           </button>
-          <button className="danger-btn" onClick={handleClearAll}>Eliminar todo</button>
+          <button className="text-btn danger" onClick={handleClearAll}>Eliminar todo</button>
         </div>
-      </header>
-
-      <div className="stats">
-        <div><strong>{items.length}</strong><span>Archivos</span></div>
-        <div><strong>{photos}</strong><span>Fotos</span></div>
-        <div><strong>{videos}</strong><span>Videos</span></div>
       </div>
 
-      <div className="admin-toolbar">
+      <div className="admin-tools">
         <input
           type="search"
-          placeholder="Buscar por nombre de archivo…"
+          aria-label="Buscar por nombre"
+          placeholder="Buscar por nombre de archivo"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button className="ghost-btn" onClick={() => { setLogged(false); setPassword(""); }}>
-          Cerrar sesión
-        </button>
+        <button className="text-btn" onClick={() => { setLogged(false); setPassword(""); }}>Salir</button>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="empty-state">
-          <h3>No hay archivos</h3>
-          <p>Los recuerdos que suban los invitados aparecerán aquí.</p>
-        </div>
+        <p className="empty">{items.length ? "Ningún archivo coincide con la búsqueda." : "Aún no llegan archivos."}</p>
       ) : (
-        <div className="admin-grid">
-          {filtered.map((item) => (
-            <MediaCard
-              key={item._id}
-              item={item}
-              admin
-              onDownload={downloadItem}
-              onDelete={deleteItem}
-            />
-          ))}
-        </div>
+        <table className="files">
+          <thead>
+            <tr>
+              <th scope="col"><span className="visually-hidden">Vista previa</span></th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Subido</th>
+              <th scope="col">Tamaño</th>
+              <th scope="col"><span className="visually-hidden">Acciones</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((item) => (
+              <tr key={item._id}>
+                <td className="thumb-cell">
+                  {item.url && (isVideo(item)
+                    ? <video src={item.url} muted preload="metadata" />
+                    : <img src={item.url} alt="" loading="lazy" />)}
+                </td>
+                <td className="name-cell">{item.fileName || "Sin nombre"}</td>
+                <td>{formatDate(item._creationTime)}</td>
+                <td>{formatBytes(item.size)}</td>
+                <td className="row-actions">
+                  <button className="text-btn" onClick={() => downloadItem(item)}>Descargar</button>
+                  <button className="text-btn danger" onClick={() => deleteItem(item)}>Eliminar</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
     </section>
   );
@@ -337,42 +324,45 @@ export default function App() {
   const items = useQuery(api.memories.list) ?? [];
   const isAdmin = path === "/admin";
 
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e) => { if (e.key === "Escape") setLightbox(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
+
   return (
     <>
-      <header className="navbar">
-        <a href="/" className="brand" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
-          Wedding Memories
+      <header className="top">
+        <a href="/" className="wordmark" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+          Recuerdos de la boda
         </a>
-        {isAdmin ? (
-          <a href="/" className="nav-link" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
-            Volver a la galería
-          </a>
-        ) : null}
+        <nav>
+          {isAdmin ? (
+            <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }}>Ver la galería</a>
+          ) : (
+            <a href="/admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}>Administración</a>
+          )}
+        </nav>
       </header>
 
       <main>
-        {isAdmin ? <AdminView items={items} /> : <HomeView items={items} onOpen={setLightbox} />}
+        {isAdmin ? <AdminView items={items} /> : <GuestView items={items} onOpen={setLightbox} />}
       </main>
 
       {lightbox?.url && (
-        <div className="lightbox" onClick={(e) => { if (e.target.classList.contains("lightbox")) setLightbox(null); }}>
-          <button className="lightbox-close" aria-label="Cerrar" onClick={() => setLightbox(null)}>×</button>
-          <div>
-            {isVideo(lightbox)
-              ? <video src={lightbox.url} controls autoPlay />
-              : <img src={lightbox.url} alt="" />}
-          </div>
+        <div
+          className="lightbox"
+          role="dialog"
+          aria-modal="true"
+          onClick={(e) => { if (e.target === e.currentTarget) setLightbox(null); }}
+        >
+          <button className="lightbox-close" aria-label="Cerrar" onClick={() => setLightbox(null)}>Cerrar</button>
+          {isVideo(lightbox)
+            ? <video src={lightbox.url} controls autoPlay />
+            : <img src={lightbox.url} alt="" />}
         </div>
       )}
-
-      <footer>
-        <span>Con cariño, para un día inolvidable</span>
-        {!isAdmin && (
-          <a href="/admin" className="footer-admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}>
-            Administración
-          </a>
-        )}
-      </footer>
     </>
   );
 }
