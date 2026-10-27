@@ -29,6 +29,9 @@ img,video{display:block}
 .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 main{width:min(1120px,92%);margin:0 auto;padding:44px 0 64px}
+/* Sin fotos: el título, el botón y el mensaje quedan centrados en la pantalla */
+main.is-empty{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:0}
+main.is-empty .gallery{margin-top:28px}
 
 /* Título y subida: arriba, sin encabezado ni menú */
 .top{display:flex;flex-direction:column;align-items:center;text-align:center;gap:18px}
@@ -65,7 +68,7 @@ main{width:min(1120px,92%);margin:0 auto;padding:44px 0 64px}
   width:0;height:0;border-left:14px solid var(--ivory);border-top:9px solid transparent;border-bottom:9px solid transparent;
   filter:drop-shadow(0 1px 3px rgba(0,0,0,.35));
 }
-.empty{text-align:center;color:var(--taupe);margin:48px 0;font-family:var(--serif);font-size:24px;font-style:italic}
+.empty{text-align:center;color:var(--taupe);margin:0;font-family:var(--serif);font-size:24px;font-style:italic}
 
 /* Visor a pantalla completa */
 .lightbox{

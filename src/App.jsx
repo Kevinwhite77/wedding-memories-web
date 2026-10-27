@@ -277,8 +277,10 @@ function AdminView({ items, onExit }) {
 export default function App() {
   const [path, navigate] = usePath();
   const [lightbox, setLightbox] = useState(null);
-  const items = useQuery(api.memories.list) ?? [];
+  const loaded = useQuery(api.memories.list);
+  const items = loaded ?? [];
   const isAdmin = path === "/admin";
+  const isEmpty = !isAdmin && loaded?.length === 0;
 
   useEffect(() => {
     if (!lightbox) return;
@@ -289,7 +291,7 @@ export default function App() {
 
   return (
     <>
-      <main>
+      <main className={isEmpty ? "is-empty" : undefined}>
         {isAdmin
           ? <AdminView items={items} onExit={() => navigate("/")} />
           : <GuestView items={items} onOpen={setLightbox} />}
