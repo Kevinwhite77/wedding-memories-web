@@ -312,28 +312,35 @@ export default function App() {
     };
   }, [open, count]);
 
-  // Gestos tipo Stories: deslizar izquierda/derecha cambia, deslizar abajo cierra.
+  // Deslizar (dedo o mouse): izquierda/derecha cambia de recuerdo, hacia abajo cierra.
+  // Los videos se ignoran para que su barra de progreso no cambie de recuerdo.
   const swipe = useRef(null);
+  const swiped = useRef(false);
 
-  function onTouchStart(e) {
-    const t = e.touches[0];
-    swipe.current = { x: t.clientX, y: t.clientY };
+  function onPointerDown(e) {
+    swiped.current = false;
+    if (e.target.tagName === "VIDEO") return;
+    swipe.current = { x: e.clientX, y: e.clientY };
   }
 
-  function onTouchEnd(e) {
+  function onPointerUp(e) {
     const start = swipe.current;
     swipe.current = null;
     if (!start) return;
-    const t = e.changedTouches[0];
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1);
-    else if (dy > 120 && Math.abs(dy) > Math.abs(dx)) setViewing(null);
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      swiped.current = true;
+      step(dx < 0 ? 1 : -1);
+    } else if (dy > 120 && Math.abs(dy) > Math.abs(dx)) {
+      swiped.current = true;
+      setViewing(null);
+    }
   }
 
-  // Toque en el tercio izquierdo o derecho. Los videos no reaccionan para no tapar sus controles.
+  // Toque en el tercio izquierdo o derecho, como en Stories. Un deslizar no cuenta como toque.
   function onLightboxClick(e) {
-    if (e.target.tagName === "VIDEO") return;
+    if (swiped.current || e.target.tagName === "VIDEO") return;
     const ratio = e.clientX / window.innerWidth;
     if (ratio < 0.3) step(-1);
     else if (ratio > 0.7) step(1);
@@ -354,8 +361,8 @@ export default function App() {
           aria-modal="true"
           aria-label="Vista ampliada"
           onClick={onLightboxClick}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
+          onPointerDown={onPointerDown}
+          onPointerUp={onPointerUp}
         >
           <div className="progress" aria-hidden="true">
             {count <= 30
@@ -376,7 +383,7 @@ export default function App() {
           </button>
           {isVideo(current)
             ? <video key={current._id} src={current.url} controls autoPlay playsInline />
-            : <img key={current._id} src={current.url} alt="" />}
+            : <img key={current._id} src={current.url} alt="" draggable={false} />}
         </div>
       )}
     </>
