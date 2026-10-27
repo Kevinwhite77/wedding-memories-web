@@ -41,7 +41,7 @@ function usePath() {
 function Tile({ item, onOpen }) {
   if (!item.url) return null;
   return (
-    <button className="tile" onClick={() => onOpen(item)} aria-label="Ver en grande">
+    <button className="tile" onClick={onOpen} aria-label="Ver en grande">
       {isVideo(item) ? (
         <>
           <video src={item.url} muted preload="metadata" />
@@ -127,8 +127,8 @@ function GuestView({ items, onOpen }) {
           <p className="empty">Aún no hay fotos. ¡Sube la primera!</p>
         ) : (
           <div className="grid">
-            {items.map((item) => (
-              <Tile key={item._id} item={item} onOpen={onOpen} />
+            {items.map((item, i) => (
+              <Tile key={item._id} item={item} onOpen={() => onOpen(i)} />
             ))}
           </div>
         )}
@@ -276,38 +276,107 @@ function AdminView({ items, onExit }) {
 
 export default function App() {
   const [path, navigate] = usePath();
-  const [lightbox, setLightbox] = useState(null);
+  // Índice del recuerdo abierto en el visor; null = cerrado.
+  const [viewing, setViewing] = useState(null);
   const loaded = useQuery(api.memories.list);
   const items = loaded ?? [];
   const isAdmin = path === "/admin";
   const isEmpty = !isAdmin && loaded?.length === 0;
 
+  const count = items.length;
+  const open = viewing !== null;
+  const current = open ? items[viewing] : null;
+
+  // Avanza o retrocede sin salir del primero ni del último.
+  function step(d) {
+    setViewing((v) => (v === null ? v : Math.min(Math.max(v + d, 0), count - 1)));
+  }
+
+  // Si se elimina el último recuerdo abierto, el visor se queda en el nuevo último.
   useEffect(() => {
-    if (!lightbox) return;
-    const onKey = (e) => { if (e.key === "Escape") setLightbox(null); };
+    if (open && viewing >= count) setViewing(count ? count - 1 : null);
+  }, [open, viewing, count]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") setViewing(null);
+      if (e.key === "ArrowRight") step(1);
+      if (e.key === "ArrowLeft") step(-1);
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [lightbox]);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [open, count]);
+
+  // Gestos tipo Stories: deslizar izquierda/derecha cambia, deslizar abajo cierra.
+  const swipe = useRef(null);
+
+  function onTouchStart(e) {
+    const t = e.touches[0];
+    swipe.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function onTouchEnd(e) {
+    const start = swipe.current;
+    swipe.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1);
+    else if (dy > 120 && Math.abs(dy) > Math.abs(dx)) setViewing(null);
+  }
+
+  // Toque en el tercio izquierdo o derecho. Los videos no reaccionan para no tapar sus controles.
+  function onLightboxClick(e) {
+    if (e.target.tagName === "VIDEO") return;
+    const ratio = e.clientX / window.innerWidth;
+    if (ratio < 0.3) step(-1);
+    else if (ratio > 0.7) step(1);
+  }
 
   return (
     <>
       <main className={isEmpty ? "is-empty" : undefined}>
         {isAdmin
           ? <AdminView items={items} onExit={() => navigate("/")} />
-          : <GuestView items={items} onOpen={setLightbox} />}
+          : <GuestView items={items} onOpen={setViewing} />}
       </main>
 
-      {lightbox?.url && (
+      {current?.url && (
         <div
           className="lightbox"
           role="dialog"
           aria-modal="true"
-          onClick={(e) => { if (e.target === e.currentTarget) setLightbox(null); }}
+          aria-label="Vista ampliada"
+          onClick={onLightboxClick}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
         >
-          <button className="lightbox-close" onClick={() => setLightbox(null)}>Cerrar</button>
-          {isVideo(lightbox)
-            ? <video src={lightbox.url} controls autoPlay />
-            : <img src={lightbox.url} alt="" />}
+          <div className="progress" aria-hidden="true">
+            {count <= 30
+              ? items.map((_, i) => (
+                  <span key={i} className={i < viewing ? "seen" : i === viewing ? "now" : undefined} />
+                ))
+              : (
+                  <span className="track">
+                    <span className="fill" style={{ width: `${((viewing + 1) / count) * 100}%` }} />
+                  </span>
+                )}
+          </div>
+          <button
+            className="lightbox-close"
+            onClick={(e) => { e.stopPropagation(); setViewing(null); }}
+          >
+            Cerrar
+          </button>
+          {isVideo(current)
+            ? <video key={current._id} src={current.url} controls autoPlay playsInline />
+            : <img key={current._id} src={current.url} alt="" />}
         </div>
       )}
     </>
