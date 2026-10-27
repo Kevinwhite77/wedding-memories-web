@@ -1,8 +1,8 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "admin123";
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "cielosazules";
 
 function isVideo(item) {
   return (item.mimeType || "").startsWith("video/");
@@ -17,6 +17,25 @@ function formatBytes(bytes) {
 function formatDate(ts) {
   if (!ts) return "";
   return new Date(ts).toLocaleString("es-CO");
+}
+
+// Enrutado mínimo por ruta: "/" es la galería y "/admin" el panel.
+function usePath() {
+  const [path, setPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  function navigate(to) {
+    if (to !== window.location.pathname) window.history.pushState({}, "", to);
+    setPath(to);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  return [path.replace(/\/+$/, "") || "/", navigate];
 }
 
 function MediaCard({ item, admin, onOpen, onDownload, onDelete }) {
@@ -37,15 +56,13 @@ function MediaCard({ item, admin, onOpen, onDownload, onDelete }) {
           <img src={url} alt="Recuerdo de boda" loading="lazy" />
         )}
       </div>
-      <div className={admin ? "admin-meta" : "media-info"}>
-        <small>
-          {formatDate(item._creationTime)}
-          {item.fileName ? ` · ${item.fileName}` : ""}
-        </small>
+      <div className="media-meta">
+        <span>{formatDate(item._creationTime)}</span>
+        {item.fileName && <span className="media-name">{item.fileName}</span>}
       </div>
       {admin && (
         <div className="admin-controls" onClick={(e) => e.stopPropagation()}>
-          <button className="mini-btn" onClick={() => onDownload(item)}>⬇ Descargar</button>
+          <button className="mini-btn" onClick={() => onDownload(item)}>Descargar</button>
           <button className="mini-btn mini-danger" onClick={() => onDelete(item)}>Eliminar</button>
         </div>
       )}
@@ -56,14 +73,12 @@ function MediaCard({ item, admin, onOpen, onDownload, onDelete }) {
 function EmptyState() {
   return (
     <div className="empty-state">
-      <div>♡</div>
       <h3>Aún no hay recuerdos</h3>
-      <p>¡Sé el primero en compartir una foto o video!</p>
+      <p>Sé el primero en compartir una foto o un video.</p>
     </div>
   );
 }
 
-// Portada única: subir + fotos en vivo, sin navegar a otras vistas.
 function HomeView({ items, onOpen }) {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [status, setStatus] = useState({ msg: "", type: "" });
@@ -86,7 +101,7 @@ function HomeView({ items, onOpen }) {
       setStatus({ msg: "Selecciona al menos una foto o video.", type: "error" });
       return;
     }
-    setStatus({ msg: `Subiendo ${selectedFiles.length} archivo(s)...`, type: "" });
+    setStatus({ msg: `Subiendo ${selectedFiles.length} archivo(s)…`, type: "" });
     setUploading(true);
     try {
       for (const file of selectedFiles) {
@@ -108,7 +123,7 @@ function HomeView({ items, onOpen }) {
       }
       setSelectedFiles([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
-      setStatus({ msg: "¡Tus recuerdos fueron guardados correctamente! ♥", type: "success" });
+      setStatus({ msg: "¡Gracias! Tus recuerdos se guardaron correctamente.", type: "success" });
     } catch (err) {
       console.error(err);
       setStatus({ msg: "No se pudo subir. Revisa tu conexión o el tamaño (máx 100 MB).", type: "error" });
@@ -119,13 +134,13 @@ function HomeView({ items, onOpen }) {
 
   return (
     <>
-      <div className="hero" style={{ padding: "45px 0 25px" }}>
-        <div className="hero-badge">Nuestro día especial · 2026</div>
-        <h1>Ayúdanos a guardar<br /><span>cada momento.</span></h1>
-        <p>Sube tus fotos aquí y mira las de los demás al instante.</p>
-      </div>
+      <section className="hero">
+        <span className="eyebrow">Nuestro día · 2026</span>
+        <h1>Guarda cada momento</h1>
+        <p>Comparte tus fotos y videos, y revive los de todos los invitados.</p>
+      </section>
 
-      <div className="upload-card">
+      <section className="upload">
         <label
           className={`drop-zone${dragging ? " dragging" : ""}`}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -144,34 +159,35 @@ function HomeView({ items, onOpen }) {
             hidden
             onChange={(e) => handleFiles([...e.target.files])}
           />
-          <div className="upload-cloud">☁</div>
-          <h3>Arrastra tus archivos aquí</h3>
-          <p>o <strong>haz clic para seleccionarlos</strong></p>
-          <small>JPG, PNG, WEBP, MP4, MOV y otros formatos compatibles</small>
+          <span className="drop-title">Arrastra tus archivos aquí</span>
+          <span className="drop-sub">o haz clic para elegirlos · JPG, PNG, HEIC, MP4, MOV</span>
         </label>
 
         {!!selectedFiles.length && (
-          <div className="selected-files">
+          <ul className="selected-files">
             {selectedFiles.map((f) => (
-              <div key={f.name + f.size} className="file-chip">✓ {f.name} · {formatBytes(f.size)}</div>
+              <li key={f.name + f.size}>
+                <span>{f.name}</span>
+                <span className="muted">{formatBytes(f.size)}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
-        <button className="primary-btn full" onClick={handleUpload} disabled={uploading}>
-          Subir recuerdos ♥
+        <button className="primary-btn" onClick={handleUpload} disabled={uploading}>
+          {uploading ? "Subiendo…" : "Subir recuerdos"}
         </button>
         <div className={`status ${status.type}`}>{status.msg}</div>
-      </div>
+      </section>
 
-      <div className="live-feed">
-        <div className="live-feed-head">
-          <div>
-            <span className="eyebrow">EN VIVO</span>
-            <h3>Fotos de los invitados {items.length > 0 && <span className="live-count">({items.length})</span>}</h3>
-            <p>Aparecen aquí automáticamente cuando alguien sube.</p>
-          </div>
-        </div>
+      <section className="gallery">
+        <header className="gallery-head">
+          <span className="eyebrow">En vivo</span>
+          <h2>
+            Fotos de los invitados
+            {items.length > 0 && <span className="count"> ({items.length})</span>}
+          </h2>
+        </header>
         {items.length === 0 ? (
           <EmptyState />
         ) : (
@@ -181,7 +197,7 @@ function HomeView({ items, onOpen }) {
             ))}
           </div>
         )}
-      </div>
+      </section>
     </>
   );
 }
@@ -236,12 +252,10 @@ function AdminView({ items }) {
 
   if (!logged) {
     return (
-      <div className="admin-login">
+      <section className="login">
         <div className="login-card">
-          <div className="lock">🔐</div>
-          <span className="eyebrow">ÁREA PRIVADA</span>
+          <span className="eyebrow">Área privada</span>
           <h2>Panel de administración</h2>
-          <p>Ingresa para gestionar los recuerdos de la boda.</p>
           <input
             type="password"
             placeholder="Contraseña"
@@ -249,59 +263,56 @@ function AdminView({ items }) {
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") login(); }}
           />
-          <button className="primary-btn full" onClick={login}>Entrar al panel</button>
+          <button className="primary-btn full" onClick={login}>Entrar</button>
           {error && <div className="error-msg">{error}</div>}
-          <small className="demo-note">Demo: contraseña <b>admin123</b></small>
         </div>
-      </div>
+      </section>
     );
   }
 
   return (
-    <>
-      <div className="admin-top">
+    <section className="admin">
+      <header className="admin-top">
         <div>
-          <span className="eyebrow">ADMINISTRACIÓN</span>
+          <span className="eyebrow">Administración</span>
           <h2>Recuerdos recibidos</h2>
         </div>
         <div className="admin-actions">
           <button
-            className="primary-btn"
+            className="ghost-btn"
             onClick={() => {
               if (!items.length) { window.alert("No hay archivos para descargar."); return; }
               items.forEach((x, i) => setTimeout(() => downloadItem(x), i * 250));
             }}
           >
-            ⬇ Descargar seleccionados
+            Descargar todo
           </button>
           <button className="danger-btn" onClick={handleClearAll}>Eliminar todo</button>
         </div>
-      </div>
+      </header>
 
       <div className="stats">
-        <div className="stat-card"><strong>{items.length}</strong><span>Archivos</span></div>
-        <div className="stat-card"><strong>{photos}</strong><span>Fotos</span></div>
-        <div className="stat-card"><strong>{videos}</strong><span>Videos</span></div>
+        <div><strong>{items.length}</strong><span>Archivos</span></div>
+        <div><strong>{photos}</strong><span>Fotos</span></div>
+        <div><strong>{videos}</strong><span>Videos</span></div>
       </div>
 
       <div className="admin-toolbar">
         <input
           type="search"
-          placeholder="Buscar por nombre de archivo..."
+          placeholder="Buscar por nombre de archivo…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button
-          className="ghost-btn"
-          onClick={() => { setLogged(false); setPassword(""); }}
-        >
+        <button className="ghost-btn" onClick={() => { setLogged(false); setPassword(""); }}>
           Cerrar sesión
         </button>
       </div>
 
       {filtered.length === 0 ? (
         <div className="empty-state">
-          <div>📂</div><h3>No hay archivos</h3><p>Los recuerdos que suban los invitados aparecerán aquí.</p>
+          <h3>No hay archivos</h3>
+          <p>Los recuerdos que suban los invitados aparecerán aquí.</p>
         </div>
       ) : (
         <div className="admin-grid">
@@ -316,53 +327,36 @@ function AdminView({ items }) {
           ))}
         </div>
       )}
-    </>
+    </section>
   );
 }
 
 export default function App() {
-  const [view, setView] = useState("home");
+  const [path, navigate] = usePath();
   const [lightbox, setLightbox] = useState(null);
   const items = useQuery(api.memories.list) ?? [];
-
-  function go(next) {
-    setView(next);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
+  const isAdmin = path === "/admin";
 
   return (
     <>
-      <div className="bg-orb orb-1"></div>
-      <div className="bg-orb orb-2"></div>
-
       <header className="navbar">
-        <a href="#" className="brand" onClick={(e) => { e.preventDefault(); go("home"); }}>
-          <span className="brand-icon">♥</span>
-          <span>Wedding Memories</span>
+        <a href="/" className="brand" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+          Wedding Memories
         </a>
-        <nav>
-          <button className={`nav-link${view === "home" ? " active" : ""}`} onClick={() => go("home")}>Inicio</button>
-          <button className="admin-btn" onClick={() => go("admin")}>Admin</button>
-        </nav>
+        {isAdmin ? (
+          <a href="/" className="nav-link" onClick={(e) => { e.preventDefault(); navigate("/"); }}>
+            Volver a la galería
+          </a>
+        ) : null}
       </header>
 
       <main>
-        {view === "home" && (
-          <section className="view active-view">
-            <HomeView items={items} onOpen={setLightbox} />
-          </section>
-        )}
-
-        {view === "admin" && (
-          <section className="view active-view">
-            <AdminView items={items} />
-          </section>
-        )}
+        {isAdmin ? <AdminView items={items} /> : <HomeView items={items} onOpen={setLightbox} />}
       </main>
 
       {lightbox?.url && (
         <div className="lightbox" onClick={(e) => { if (e.target.classList.contains("lightbox")) setLightbox(null); }}>
-          <button className="lightbox-close" onClick={() => setLightbox(null)}>×</button>
+          <button className="lightbox-close" aria-label="Cerrar" onClick={() => setLightbox(null)}>×</button>
           <div>
             {isVideo(lightbox)
               ? <video src={lightbox.url} controls autoPlay />
@@ -372,8 +366,12 @@ export default function App() {
       )}
 
       <footer>
-        <span>Hecho con ♥ para un día inolvidable</span>
-        <button onClick={() => go("admin")} className="footer-admin">Acceso administrador</button>
+        <span>Con cariño, para un día inolvidable</span>
+        {!isAdmin && (
+          <a href="/admin" className="footer-admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}>
+            Administración
+          </a>
+        )}
       </footer>
     </>
   );

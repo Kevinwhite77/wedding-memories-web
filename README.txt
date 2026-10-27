@@ -4,8 +4,8 @@
 1. Abre `index.html` en Chrome, Edge o Firefox.
 2. Entra en "Compartir recuerdos" y selecciona fotos/videos.
 3. Los archivos quedan guardados en el almacenamiento local del navegador.
-4. Entra a "Admin".
-5. Contraseña de demostración: `admin123`.
+4. Entra a `/admin` (o al enlace "Administración" del pie de página).
+5. Contraseña de demostración: `cielosazules`.
 
 ## Importante para una versión real
 Esta versión es un prototipo frontend. `localStorage` sirve para demostrar el funcionamiento en un solo navegador, pero NO permite que los invitados de distintos celulares compartan archivos en una galería común.
