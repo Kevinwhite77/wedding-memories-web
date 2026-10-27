@@ -295,12 +295,6 @@ export default function App() {
           : <GuestView items={items} onOpen={setLightbox} />}
       </main>
 
-      {!isAdmin && (
-        <footer>
-          <a href="/admin" onClick={(e) => { e.preventDefault(); navigate("/admin"); }}>Administración</a>
-        </footer>
-      )}
-
       {lightbox?.url && (
         <div
           className="lightbox"

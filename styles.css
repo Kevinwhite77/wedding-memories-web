@@ -76,11 +76,6 @@ main{width:min(1120px,92%);margin:0 auto;padding:44px 0 64px}
 .lightbox-close{position:fixed;top:20px;right:24px;font-size:14px;color:var(--ivory);opacity:.8}
 .lightbox-close:hover{opacity:1}
 
-/* Pie: solo el enlace de administración */
-footer{text-align:center;padding:0 0 32px}
-footer a{font-size:12px;letter-spacing:.08em;color:var(--taupe);text-decoration:none;opacity:.7}
-footer a:hover{opacity:1;text-decoration:underline}
-
 /* Administración */
 .login{max-width:340px;margin:12vh auto 0;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center}
 .login h1{font-family:var(--serif);font-weight:500;font-size:40px;color:var(--sage);margin:0}
