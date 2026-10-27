@@ -111,34 +111,39 @@ function GuestView({ items, onOpen }) {
   return (
     <>
       <section className="hero">
-        <h1>Las fotos que nos faltaban.</h1>
-        <p>Sube lo que captaste esta noche. Cada archivo aparece en la galería al instante.</p>
+        <h1>
+          <span>Las fotos</span>
+          <span>que nos faltaban.</span>
+        </h1>
+        <div className="hero-foot">
+          <p>Sube lo que captaste esta noche. Cada archivo aparece en la galería al instante.</p>
+          <label
+            className={`shutter${dragging ? " is-dragging" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              pick([...e.dataTransfer.files]);
+            }}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className="visually-hidden"
+              onChange={(e) => pick([...e.target.files])}
+            />
+            <span className="shutter-core">
+              {files.length ? files.length : "Elegir"}
+            </span>
+            <span className="visually-hidden">Elegir fotos y videos</span>
+          </label>
+        </div>
       </section>
 
-      <section className="upload" aria-labelledby="upload-title">
-        <h2 id="upload-title" className="visually-hidden">Subir recuerdos</h2>
-        <label
-          className={`drop${dragging ? " is-dragging" : ""}`}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            pick([...e.dataTransfer.files]);
-          }}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*,video/*"
-            multiple
-            className="visually-hidden"
-            onChange={(e) => pick([...e.target.files])}
-          />
-          <span className="drop-title">{files.length ? `${files.length} listo${files.length === 1 ? "" : "s"} para enviar` : "Elige fotos y videos"}</span>
-          <span className="drop-hint">o arrástralos a este recuadro</span>
-        </label>
-
+      <section className="upload" aria-label="Enviar recuerdos">
         {!!files.length && (
           <ul className="queue">
             {files.map((f) => (
