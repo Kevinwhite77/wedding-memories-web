@@ -54,6 +54,23 @@ function Tile({ item, onOpen }) {
   );
 }
 
+// Separador de hojas, el mismo de la web de la invitación.
+function Divider() {
+  return (
+    <div className="divider" aria-hidden="true">
+      <span className="divider-line" />
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2c1.5 3 1.5 6 0 9-1.5-3-1.5-6 0-9Z" fill="currentColor" opacity="0.9" />
+        <path d="M12 22c1.5-3 1.5-6 0-9-1.5 3-1.5 6 0 9Z" fill="currentColor" opacity="0.9" />
+        <path d="M2 12c3-1.5 6-1.5 9 0-3 1.5-6 1.5-9 0Z" fill="currentColor" opacity="0.55" />
+        <path d="M22 12c-3-1.5-6-1.5-9 0 3 1.5 6 1.5 9 0Z" fill="currentColor" opacity="0.55" />
+        <circle cx="12" cy="12" r="1.6" fill="currentColor" />
+      </svg>
+      <span className="divider-line" />
+    </div>
+  );
+}
+
 function GuestView({ items, onOpen }) {
   const [status, setStatus] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -103,8 +120,11 @@ function GuestView({ items, onOpen }) {
 
   return (
     <>
+      <img src="/botanical-sprig.png" alt="" aria-hidden="true" className="sprig sprig-top" />
+      <img src="/botanical-sprig.png" alt="" aria-hidden="true" className="sprig sprig-bottom" />
       <section className="top">
         <h1>Kevin &amp; Cesia</h1>
+        <Divider />
         <div className="upload">
           <label className={`upload-btn${uploading ? " is-busy" : ""}`}>
             <input
@@ -124,7 +144,10 @@ function GuestView({ items, onOpen }) {
 
       <section className="gallery" aria-label="Galería">
         {items.length === 0 ? (
-          <p className="empty">Aún no hay fotos. ¡Sube la primera!</p>
+          <div className="empty-wrap">
+            <img src="/botanical-sprig.png" alt="" aria-hidden="true" className="empty-sprig" />
+            <p className="empty">Aún no hay fotos. ¡Sube la primera!</p>
+          </div>
         ) : (
           <div className="grid">
             {items.map((item, i) => (

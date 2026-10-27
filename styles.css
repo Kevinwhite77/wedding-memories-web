@@ -39,10 +39,17 @@ main.is-empty .gallery{margin-top:28px}
   font-family:var(--serif);font-weight:500;font-size:clamp(40px,6vw,64px);
   line-height:1;color:var(--sage);margin:0;letter-spacing:.01em;
 }
-.top h1::after{
-  content:"";display:block;width:64px;height:1px;margin:18px auto 0;
-  background:var(--champagne);
+.divider{display:flex;align-items:center;justify-content:center;gap:14px;color:oklch(0.7 0.075 78)}
+.divider-line{display:block;width:64px;height:1px;background:linear-gradient(to right,transparent,oklch(0.7 0.075 78))}
+.divider-line:last-child{background:linear-gradient(to left,transparent,oklch(0.7 0.075 78))}
+/* Ramas de eucalipto en las esquinas, como en la web de la invitación */
+.sprig{
+  position:fixed;z-index:0;width:520px;height:auto;pointer-events:none;
+  mix-blend-mode:multiply;opacity:.6;user-select:none;
+  -webkit-mask-image:radial-gradient(closest-side,#000 60%,transparent 100%);mask-image:radial-gradient(closest-side,#000 60%,transparent 100%);
 }
+.sprig-top{top:-200px;left:-250px}
+.sprig-bottom{bottom:-200px;right:-250px;transform:scaleX(-1)}
 .upload{display:flex;flex-direction:column;align-items:center;gap:10px}
 .upload-btn{
   display:inline-block;border-radius:8px;padding:14px 30px;
@@ -69,6 +76,8 @@ main.is-empty .gallery{margin-top:28px}
   filter:drop-shadow(0 1px 3px rgba(0,0,0,.35));
 }
 .empty{text-align:center;color:var(--taupe);margin:0;font-family:var(--serif);font-size:24px;font-style:italic}
+.empty-wrap{display:flex;flex-direction:column;align-items:center}
+.empty-sprig{width:190px;height:auto;margin:-70px 0 -40px;mix-blend-mode:multiply;opacity:.85;pointer-events:none;-webkit-mask-image:radial-gradient(closest-side,#000 60%,transparent 100%);mask-image:radial-gradient(closest-side,#000 60%,transparent 100%);}
 
 /* Visor a pantalla completa */
 .lightbox{
@@ -122,6 +131,7 @@ table.files{width:100%;border-collapse:collapse;font-size:15px}
 .row-actions .text-btn{margin-left:16px}
 
 @media(max-width:640px){
+  .sprig{display:none}
   main{padding-top:32px}
   .grid{grid-template-columns:repeat(2,1fr);gap:6px}
   .files .thumb-cell,.files th:nth-child(4),.files td:nth-child(4){display:none}
