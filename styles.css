@@ -142,7 +142,10 @@ table.files{width:100%;border-collapse:collapse;font-size:15px}
   .sprig-left{left:-14px}
   .sprig-right{right:-14px}
   .grid{grid-template-columns:repeat(2,1fr);gap:6px}
-  .files .thumb-cell,.files th:nth-child(4),.files td:nth-child(4){display:none}
+  /* En el admin de teléfono solo importan las miniaturas: se ocultan nombre y tamaño, y las fotos crecen */
+  .files th:nth-child(2),.files td:nth-child(2),.files th:nth-child(4),.files td:nth-child(4){display:none}
+  .thumb-cell{width:84px}
+  .thumb-cell img,.thumb-cell video{width:72px;height:72px}
   .admin-tools input{max-width:none}
 }
 @media(prefers-reduced-motion:reduce){
