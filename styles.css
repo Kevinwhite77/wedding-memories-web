@@ -10,8 +10,26 @@
   --linen:oklch(0.93 0.014 82);
   --line:oklch(0.89 0.014 80);
   --danger:oklch(0.5 0.16 25);
+  /* Texto e iconos sobre fotos y el visor: siempre claros, en cualquier tema */
+  --on-photo:oklch(0.972 0.009 85);
   --serif:"Cormorant Garamond",Georgia,serif;
   --sans:"Jost",system-ui,-apple-system,sans-serif;
+  color-scheme:light dark;
+}
+
+/* Modo oscuro: sigue la preferencia del sistema operativo */
+@media(prefers-color-scheme:dark){
+  :root{
+    --ivory:oklch(0.2 0.014 55);
+    --card:oklch(0.26 0.016 55);
+    --espresso:oklch(0.93 0.012 85);
+    --taupe:oklch(0.7 0.02 70);
+    --sage:oklch(0.78 0.06 158);
+    --sage-dark:oklch(0.7 0.06 158);
+    --linen:oklch(0.3 0.016 75);
+    --line:oklch(0.38 0.016 70);
+    --danger:oklch(0.72 0.14 25);
+  }
 }
 
 *{box-sizing:border-box}
@@ -78,7 +96,7 @@ main.is-empty .gallery{margin-top:28px}
 .tile:hover img,.tile:hover video{transform:scale(1.03)}
 .play{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  width:0;height:0;border-left:14px solid var(--ivory);border-top:9px solid transparent;border-bottom:9px solid transparent;
+  width:0;height:0;border-left:14px solid var(--on-photo);border-top:9px solid transparent;border-bottom:9px solid transparent;
   filter:drop-shadow(0 1px 3px rgba(0,0,0,.35));
 }
 .empty{text-align:center;color:var(--taupe);margin:0;font-family:var(--serif);font-size:24px;font-style:italic}
@@ -91,15 +109,15 @@ main.is-empty .gallery{margin-top:28px}
 .lightbox{cursor:grab;touch-action:pan-y;user-select:none;-webkit-user-select:none}
 /* max-height en % no resuelve dentro de un grid con fila automática: se usa el viewport */
 .lightbox img,.lightbox video{width:auto;height:auto;max-width:90vw;max-height:88vh;object-fit:contain;border-radius:6px;cursor:grab}
-.lightbox-close{position:fixed;top:30px;right:20px;font-size:14px;color:var(--ivory);opacity:.8;z-index:1}
+.lightbox-close{position:fixed;top:30px;right:20px;font-size:14px;color:var(--on-photo);opacity:.8;z-index:1}
 .lightbox-close:hover{opacity:1}
 /* Barra de progreso tipo Stories: un segmento por recuerdo (o una barra si son muchos) */
 .progress{position:fixed;top:12px;left:16px;right:16px;display:flex;gap:4px;z-index:1}
 .progress span{flex:1;height:2px;border-radius:2px;background:oklch(0.97 0.009 85 / .28)}
-.progress span.seen{background:var(--ivory)}
-.progress span.now{background:var(--ivory);box-shadow:0 0 6px oklch(0.97 0.009 85 / .6)}
+.progress span.seen{background:var(--on-photo)}
+.progress span.now{background:var(--on-photo);box-shadow:0 0 6px oklch(0.97 0.009 85 / .6)}
 .progress .track{flex:1;height:2px;border-radius:2px;background:oklch(0.97 0.009 85 / .28);overflow:hidden}
-.progress .fill{display:block;height:100%;background:var(--ivory)}
+.progress .fill{display:block;height:100%;background:var(--on-photo)}
 
 /* Administración */
 .login{max-width:340px;margin:12vh auto 0;display:flex;flex-direction:column;align-items:center;gap:20px;text-align:center}
