@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 
@@ -202,17 +202,7 @@ function AdminView({ items, onExit }) {
   const [logged, setLogged] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
   const removeMemory = useMutation(api.memories.remove);
-  const clearAll = useMutation(api.memories.clearAll);
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return items.filter((x) => String(x.fileName || "").toLowerCase().includes(q));
-  }, [items, search]);
-
-  const videos = items.filter(isVideo).length;
-  const photos = items.length - videos;
 
   function login() {
     if (password === ADMIN_PASSWORD) {
@@ -239,13 +229,6 @@ function AdminView({ items, onExit }) {
     await removeMemory({ id: item._id });
   }
 
-  async function handleClearAll() {
-    if (!items.length) return;
-    if (window.confirm(`¿Eliminar los ${items.length} archivos? No se puede deshacer.`)) {
-      await clearAll({});
-    }
-  }
-
   if (!logged) {
     return (
       <section className="login">
@@ -269,9 +252,13 @@ function AdminView({ items, onExit }) {
   return (
     <section className="admin">
       <div className="admin-head">
-        <div>
-          <h1>Archivos recibidos</h1>
-          <p className="summary">{items.length} en total · {photos} fotos · {videos} videos</p>
+        <div className="admin-title">
+          <button className="icon-btn" onClick={onExit} aria-label="Ir a la galería" title="Ir a la galería">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <h1>Fotos y Videos</h1>
         </div>
         <div className="admin-actions">
           <button
@@ -283,45 +270,33 @@ function AdminView({ items, onExit }) {
           >
             Descargar todo
           </button>
-          <button className="text-btn danger" onClick={handleClearAll}>Eliminar todo</button>
         </div>
       </div>
 
-      <div className="admin-tools">
-        <input
-          type="search"
-          aria-label="Buscar por nombre"
-          placeholder="Buscar por nombre"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <button className="text-btn" onClick={onExit}>Volver a la galería</button>
-      </div>
-
-      {filtered.length === 0 ? (
-        <p className="empty">{items.length ? "Ningún archivo coincide." : "Aún no llegan archivos."}</p>
+      {items.length === 0 ? (
+        <p className="empty">Aún no llegan archivos.</p>
       ) : (
         <table className="files">
           <thead>
             <tr>
               <th scope="col"><span className="visually-hidden">Vista previa</span></th>
-              <th scope="col">Nombre</th>
-              <th scope="col">Subido</th>
-              <th scope="col">Tamaño</th>
+              <th scope="col" className="col-name">Nombre</th>
+              <th scope="col" className="col-date">Subido</th>
+              <th scope="col" className="col-size">Tamaño</th>
               <th scope="col"><span className="visually-hidden">Acciones</span></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item) => (
+            {items.map((item) => (
               <tr key={item._id}>
                 <td className="thumb-cell">
                   {item.url && (isVideo(item)
                     ? <video src={item.url} muted preload="metadata" />
                     : <img src={item.url} alt="" loading="lazy" />)}
                 </td>
-                <td className="name-cell">{item.fileName || "Sin nombre"}</td>
-                <td>{formatDate(item._creationTime)}</td>
-                <td>{formatBytes(item.size)}</td>
+                <td className="name-cell col-name">{item.fileName || "Sin nombre"}</td>
+                <td className="col-date">{formatDate(item._creationTime)}</td>
+                <td className="col-size">{formatBytes(item.size)}</td>
                 <td className="row-actions">
                   <button className="text-btn" onClick={() => downloadItem(item)}>Descargar</button>
                   <button className="text-btn danger" onClick={() => deleteItem(item)}>Eliminar</button>
