@@ -342,6 +342,9 @@ export default function App() {
   const loaded = useQuery(api.memories.list);
   const items = loaded ?? [];
   const isAdmin = path === "/admin";
+  // Mientras llega la lista no se pinta nada de la galería: así el layout (arriba o centrado)
+  // se decide una sola vez, con los datos ya listos, y no aparece el mensaje de "vacío" antes de las fotos.
+  const ready = isAdmin || loaded !== undefined;
   const isEmpty = !isAdmin && loaded?.length === 0;
 
   const count = items.length;
@@ -410,7 +413,7 @@ export default function App() {
   return (
     <>
       <main className={isEmpty ? "is-empty" : undefined}>
-        {isAdmin
+        {!ready ? null : isAdmin
           ? <AdminView items={items} onExit={() => navigate("/")} />
           : <GuestView items={items} onOpen={setViewing} />}
       </main>
