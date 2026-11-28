@@ -38,10 +38,10 @@ function usePath() {
   return [path.replace(/\/+$/, "") || "/", navigate];
 }
 
-function Tile({ item, onOpen }) {
+function Tile({ item, index, onOpen }) {
   if (!item.url) return null;
   return (
-    <button className="tile" onClick={onOpen} aria-label="Ver en grande">
+    <button className="tile" style={{ "--i": index }} onClick={onOpen} aria-label="Ver en grande">
       {isVideo(item) ? (
         <>
           <video src={item.url} muted preload="metadata" />
@@ -189,7 +189,7 @@ function GuestView({ items, onOpen }) {
         ) : (
           <div className="grid">
             {items.map((item, i) => (
-              <Tile key={item._id} item={item} onOpen={() => onOpen(i)} />
+              <Tile key={item._id} item={item} index={i} onOpen={() => onOpen(i)} />
             ))}
           </div>
         )}

@@ -160,6 +160,11 @@ table.files{width:100%;border-collapse:collapse;font-size:15px}
   .sprig-left{left:-14px}
   .sprig-right{right:-14px}
   .grid{grid-template-columns:repeat(2,1fr);gap:6px}
+  /* Las fotos entran deslizándose, en escalonado; las impares desde la izquierda y las pares desde la derecha */
+  .tile{animation:tile-in-left .55s cubic-bezier(.2,.7,.2,1) both;animation-delay:min(calc(var(--i,0) * 70ms),600ms)}
+  .tile:nth-child(even){animation-name:tile-in-right}
+  @keyframes tile-in-left{from{opacity:0;transform:translateX(-45%)}to{opacity:1;transform:none}}
+  @keyframes tile-in-right{from{opacity:0;transform:translateX(45%)}to{opacity:1;transform:none}}
   /* En el admin de teléfono solo importan las miniaturas: se ocultan nombre y tamaño, y las fotos crecen */
   .files th:nth-child(2),.files td:nth-child(2),.files th:nth-child(4),.files td:nth-child(4){display:none}
   .thumb-cell{width:84px}
