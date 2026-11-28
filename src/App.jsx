@@ -356,6 +356,26 @@ export default function App() {
     setViewing((v) => (v === null ? v : Math.min(Math.max(v + d, 0), count - 1)));
   }
 
+  // Abrir el visor agrega una entrada al historial: así el gesto "atrás" del celular
+  // cierra el visor en vez de salir de la página.
+  function openLightbox(i) {
+    window.history.pushState({ ...window.history.state, lightbox: true }, "");
+    setViewing(i);
+  }
+
+  // Cerrar desde la app (botón, Escape, deslizar) retira esa misma entrada.
+  function closeLightbox() {
+    if (window.history.state?.lightbox) window.history.back();
+    else setViewing(null);
+  }
+
+  // Gesto "atrás" del sistema: cierra el visor sin salir de la página.
+  useEffect(() => {
+    const onPop = () => setViewing(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   // Si se elimina el último recuerdo abierto, el visor se queda en el nuevo último.
   useEffect(() => {
     if (open && viewing >= count) setViewing(count ? count - 1 : null);
@@ -364,7 +384,7 @@ export default function App() {
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => {
-      if (e.key === "Escape") setViewing(null);
+      if (e.key === "Escape") closeLightbox();
       if (e.key === "ArrowRight") step(1);
       if (e.key === "ArrowLeft") step(-1);
     };
@@ -398,7 +418,7 @@ export default function App() {
       step(dx < 0 ? 1 : -1);
     } else if (dy > 120 && Math.abs(dy) > Math.abs(dx)) {
       swiped.current = true;
-      setViewing(null);
+      closeLightbox();
     }
   }
 
@@ -415,7 +435,7 @@ export default function App() {
       <main className={isEmpty ? "is-empty" : undefined}>
         {!ready ? null : isAdmin
           ? <AdminView items={items} onExit={() => navigate("/")} />
-          : <GuestView items={items} onOpen={setViewing} />}
+          : <GuestView items={items} onOpen={openLightbox} />}
       </main>
 
       {current?.url && (
@@ -441,7 +461,7 @@ export default function App() {
           </div>
           <button
             className="lightbox-close"
-            onClick={(e) => { e.stopPropagation(); setViewing(null); }}
+            onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
           >
             Cerrar
           </button>
